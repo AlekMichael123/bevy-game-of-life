@@ -15,7 +15,7 @@ impl Plugin for CellsPlugin {
   }
 }
 
-#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
 pub enum CellState {
   Alive,
   Dead,
@@ -42,7 +42,6 @@ pub fn init_cells(mut commands: Commands) {
             CellState::Dead
           };
           let color = if cell_state == CellState::Alive { Color::WHITE } else { Color::BLACK };
-          // commands.spawn((
           let sprite = SpriteBundle {
             sprite: Sprite {
               color,
