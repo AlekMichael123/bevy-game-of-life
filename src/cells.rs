@@ -4,6 +4,11 @@ const DEFAULT_CELLS_GRID_SIZE: usize = 500;
 pub const WINDOW_SIZE: f32 = 1000.;
 const DEFAULT_CELL_SIZE: f32 = (WINDOW_SIZE as usize / (DEFAULT_CELLS_GRID_SIZE)) as f32;
 const CELLS_TIMER_DURATION_SECONDS: f32 = 0.;
+const DIRECTIONS: [(isize, isize); 8] = [
+  (1, -1),  (1, 0),  (1, 1),
+  (0, -1),           (0, 1), 
+  (-1, -1), (-1, 0), (-1, 1), 
+];
 
 pub struct CellsPlugin;
 
@@ -79,19 +84,12 @@ fn update_grid(
   }
 }
 
-const DIRECTIONS: [(isize, isize); 8] = [
-  (1, -1),  (1, 0),  (1, 1),
-  (0, -1),           (0, 1), 
-  (-1, -1), (-1, 0), (-1, 1), 
-];
-
 fn next_cell_states(i: usize, j: usize, cell_states: &Vec<CellState>) -> CellState {
   let mut alive_neighbor_count: u8 = 0;
   DIRECTIONS.iter().for_each(|(i_off, j_off)| {
     let i = ((i as isize + i_off + DEFAULT_CELLS_GRID_SIZE as isize) % DEFAULT_CELLS_GRID_SIZE as isize) as usize;
     let j = ((j as isize + j_off + DEFAULT_CELLS_GRID_SIZE as isize) % DEFAULT_CELLS_GRID_SIZE as isize) as usize;
-    let neighbor_cell_state = cell_states[(i * DEFAULT_CELLS_GRID_SIZE) + j].clone();
-    if neighbor_cell_state == CellState::Alive { 
+    if cell_states[to_index(i, j)] == CellState::Alive { 
       alive_neighbor_count += 1;
     }
   });
@@ -101,6 +99,10 @@ fn next_cell_states(i: usize, j: usize, cell_states: &Vec<CellState>) -> CellSta
   } else if alive_neighbor_count >= 3 {
     CellState::Alive
   } else {
-    cell_states[(i * DEFAULT_CELLS_GRID_SIZE) + j].clone()
+    cell_states[to_index(i, j)].clone()
   }
+}
+
+fn to_index(i: usize, j: usize) -> usize {
+  (i * DEFAULT_CELLS_GRID_SIZE) + j
 }
