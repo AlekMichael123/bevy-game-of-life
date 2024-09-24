@@ -18,7 +18,6 @@ fn main() {
           ..default()
       }),
       cells::CellsPlugin,
-      // #[cfg(not(target_arch = "wasm32"))]
       Wireframe2dPlugin,
     ))
     .run();
