@@ -16,7 +16,7 @@ impl Plugin for CellsPlugin {
 }
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
-pub enum CellState {
+enum CellState {
   Alive,
   Dead,
 }
@@ -28,9 +28,9 @@ struct CellBundle {
 }
 
 #[derive(Resource)]
-pub struct CellsTimer(Timer);
+struct CellsTimer(Timer);
 
-pub fn init_cells(mut commands: Commands) {
+fn init_cells(mut commands: Commands) {
   commands.spawn(Camera2dBundle::default());
   (0..DEFAULT_CELLS_GRID_SIZE).for_each(|i| {
     (0..DEFAULT_CELLS_GRID_SIZE).for_each(|j| {
@@ -61,7 +61,7 @@ pub fn init_cells(mut commands: Commands) {
   });
 }
 
-pub fn update_grid(
+fn update_grid(
   time: Res<Time>, 
   mut timer: ResMut<CellsTimer>, 
   mut cells_query: Query<(&mut CellState, &mut Sprite)>,

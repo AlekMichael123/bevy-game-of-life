@@ -7,19 +7,19 @@ pub mod cells;
 
 
 fn main() {
-    App::new()
-      .add_plugins((
-        DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: (cells::WINDOW_SIZE, cells::WINDOW_SIZE).into(),
-                resizable: false,
-                ..default()
-            }),
-            ..default()
-        }),
-        cells::CellsPlugin,
-        // #[cfg(not(target_arch = "wasm32"))]
-        Wireframe2dPlugin,
-      ))
-      .run();
+  App::new()
+    .add_plugins((
+      DefaultPlugins.set(WindowPlugin {
+          primary_window: Some(Window {
+              resolution: (cells::WINDOW_SIZE, cells::WINDOW_SIZE).into(),
+              resizable: false,
+              ..default()
+          }),
+          ..default()
+      }),
+      cells::CellsPlugin,
+      // #[cfg(not(target_arch = "wasm32"))]
+      Wireframe2dPlugin,
+    ))
+    .run();
 }
