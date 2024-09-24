@@ -1,60 +1,53 @@
-//! TODO: YOU SHOULD GET RID OF CELLS AND JUST USE ENUM, THEN TIE TOGETHER THE ENUM WITH A SPRITE!!! FIX IT THEN YOUR GOLDEN BB!!!
+use bevy::prelude::*;
 
-use std::borrow::BorrowMut;
-
-use bevy::{prelude::*, sprite::{MaterialMesh2dBundle, Mesh2dHandle}};
-
-const DEFAULT_CELLS_GRID_SIZE: usize = 10;
-pub const WINDOW_SIZE: f32 = 1200.;
+const DEFAULT_CELLS_GRID_SIZE: usize = 500;
+pub const WINDOW_SIZE: f32 = 1000.;
 const DEFAULT_CELL_SIZE: f32 = (WINDOW_SIZE as usize / (DEFAULT_CELLS_GRID_SIZE)) as f32;
-const CELLS_TIMER_DURATION_SECONDS: f32 = 1.;
+const CELLS_TIMER_DURATION_SECONDS: f32 = 0.;
 
 pub struct CellsPlugin;
 
 impl Plugin for CellsPlugin {
   fn build(&self, app: &mut App) {
     app.insert_resource(CellsTimer(Timer::from_seconds(CELLS_TIMER_DURATION_SECONDS, TimerMode::Repeating)));
-    app.add_systems(Startup, (init_cells, init_sprites));
-    app.add_systems(Update, (update_grid, update_grid_colors).chain());
+    app.add_systems(Startup, init_cells);
+    app.add_systems(Update, update_grid);
   }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CellState {
   Alive,
   Dead,
 }
 
-type CellsRow = Vec<CellState>;
-type CellsGrid = Vec<CellsRow>;
-
-#[derive(Component, Debug)]
-pub struct Cells(CellsGrid);
+#[derive(Bundle)]
+struct CellBundle {
+  cell_state: CellState,
+  sprite: SpriteBundle,
+}
 
 #[derive(Resource)]
 pub struct CellsTimer(Timer);
 
 pub fn init_cells(mut commands: Commands) {
-  commands.spawn(generate_random_cells());
-}
-
-pub fn init_sprites(
-  mut commands: Commands,
-  mut meshes: ResMut<Assets<Mesh>>,
-  mut materials: ResMut<Assets<ColorMaterial>>,
-) {
   commands.spawn(Camera2dBundle::default());
   (0..DEFAULT_CELLS_GRID_SIZE)
-    .into_iter()
     .for_each(|i| {
       (0..DEFAULT_CELLS_GRID_SIZE)
-        .into_iter()
         .for_each(|j| {
-          commands.spawn(SpriteBundle {
+          let cell_state = if rand::random() {
+            CellState::Alive
+          } else {
+            CellState::Dead
+          };
+          let color = if cell_state == CellState::Alive { Color::WHITE } else { Color::BLACK };
+          // commands.spawn((
+          let sprite = SpriteBundle {
             sprite: Sprite {
-                color: Color::BLACK,
-                custom_size: Some(Vec2::new(DEFAULT_CELL_SIZE, DEFAULT_CELL_SIZE)),
-                ..default()
+              color,
+              custom_size: Some(Vec2::new(DEFAULT_CELL_SIZE, DEFAULT_CELL_SIZE)),
+              ..default()
             },
             transform: Transform::from_xyz( 
               (j as f32 * DEFAULT_CELL_SIZE) + (DEFAULT_CELL_SIZE / 2.) - (WINDOW_SIZE / 2.), 
@@ -62,43 +55,57 @@ pub fn init_sprites(
               0.
             ),
             ..default()
+          };
+          commands.spawn(CellBundle {
+            cell_state,
+            sprite,
           });
         });
     });
 }
 
-fn generate_random_cells() -> Cells {
-  let grid = 
-    (0..DEFAULT_CELLS_GRID_SIZE)
-      .map(|_| 
-        (0..DEFAULT_CELLS_GRID_SIZE)
-          .map(|_| {
-            if rand::random() {
-              CellState::Alive
-            } else {
-              CellState::Dead
-            }
-          })
-          .collect()
-      )
-      .collect();
-  Cells(grid)
-}
-
-pub fn update_grid(time: Res<Time>, mut timer: ResMut<CellsTimer>, mut cells_query: Query<&mut Cells>) {
+pub fn update_grid(
+  time: Res<Time>, 
+  mut timer: ResMut<CellsTimer>, 
+  mut cells_query: Query<(&mut CellState, &mut Sprite)>,
+) {
   if timer.0.tick(time.delta()).just_finished() {
-    let mut cells = cells_query.single_mut();
-    println!("{:?}", &cells_query.single().0);
+    let cell_states: Vec<CellState> = cells_query.iter().map(|(cell, _)| cell.clone()).collect();
+    cells_query
+      .iter_mut()
+      .enumerate()
+      .map(|(i, q)| (i / DEFAULT_CELLS_GRID_SIZE, i % DEFAULT_CELLS_GRID_SIZE, q))
+      .for_each(|(i, j, (mut state, mut sprite))| {
+        *state = next_cell_states(i, j, &cell_states);
+        (*sprite).color = if *state == CellState::Alive { Color::WHITE } else { Color::BLACK };
+      });
   }
 }
 
-pub fn update_grid_colors(cells_query: Query<&Cells>, mut query: Query<(&mut Transform, &mut Sprite)>) {
-  let concat = cells_query.single().0.concat();
-  for (i, (_, mut sprite)) in (&mut query).iter_mut().enumerate() {
-    sprite.color = if concat[i] == CellState::Alive {
-      Color::WHITE
-    } else {
-      Color::BLACK
-    };
+const DIRECTIONS: [(isize, isize); 8] = [
+  (1, -1),  (1, 0),  (1, 1),
+  (0, -1),           (0, 1), 
+  (-1, -1), (-1, 0), (-1, 1), 
+];
+
+fn next_cell_states(i: usize, j: usize, cell_states: &Vec<CellState>) -> CellState {
+  let mut alive_neighbor_count: u8 = 0;
+  DIRECTIONS
+    .iter()
+    .for_each(|(i_off, j_off)| {
+      let i = ((i as isize + i_off + DEFAULT_CELLS_GRID_SIZE as isize) % DEFAULT_CELLS_GRID_SIZE as isize) as usize;
+      let j = ((j as isize + j_off + DEFAULT_CELLS_GRID_SIZE as isize) % DEFAULT_CELLS_GRID_SIZE as isize) as usize;
+      let neighbor_cell_state = cell_states[(i * DEFAULT_CELLS_GRID_SIZE) + j].clone();
+      if neighbor_cell_state == CellState::Alive { 
+        alive_neighbor_count += 1;
+      }
+    });
+  
+  if alive_neighbor_count <= 1 || alive_neighbor_count >= 4 {
+    CellState::Dead
+  } else if alive_neighbor_count >= 3 {
+    CellState::Alive
+  } else {
+    cell_states[(i * DEFAULT_CELLS_GRID_SIZE) + j].clone()
   }
 }
